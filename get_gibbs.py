@@ -44,6 +44,7 @@ parser.add_argument('-shade_stability',action='store_true',help="""If this flag 
 parser.add_argument('-label_structures',action='store_true',help="If this flag is supplied, the lowest enthalpy structures will be labelled with their structure name.")
 parser.add_argument('-num_fine_points',type=int,default=10**6,help="""Number of points in the fine (interpolated) grid. Use 10^5 or 10^6 for publication quality.
 Can converge residual fitting errors wrt to num_fine_points (stops changing after like 10^6 or so).""")
+parser.add_argument('-no_enthalpy_scatter',action='store_true',help="If this flag is supplied, DFT enthalpies will not be plotted as scatter points.")
 args=parser.parse_args()
 
 mode=args.mode
@@ -67,6 +68,7 @@ legend_ncols=args.legend_ncols
 label_structures=args.label_structures
 shade_stability=args.shade_stability
 num_fine_points=args.num_fine_points
+no_enthalpy_scatter=args.no_enthalpy_scatter
 
 ####################################################################################################
 # Globally useful stuff, conversion factors, etc
@@ -357,7 +359,7 @@ for filename in file_list:
         # Plotting G Vs p - Uncomment as needed
 		elif mode == 'plot_G':
 			ax.plot(pressure_values_gpa_fine,gibbs_free_energy,label=r'$\mathrm{%s}$' % (structure_name))
-			if enthalpies:
+			if (enthalpies and not no_enthalpy_scatter):
 				ax.scatter(DFT_pressures,enthalpies,color='%s' % (colour))
 			plt.xlabel(r'Pressure (%s)' % (pressure_units), fontsize=20, usetex=True)
 			plt.ylabel(r'Gibbs Free Energy (eV)', fontsize=20, usetex=True)
@@ -391,7 +393,7 @@ for filename in file_list:
 				press_enth_zipped=[ x for x in press_enth_zipped if (x[0] > min(pressure_truncated)) and (x[0] < max(pressure_truncated)) ] # filter out datapoints that lie outside pressure_truncated
 				DFT_pressures, enthalpies = zip(*press_enth_zipped) # unzip
 			DFT_pressures_nearest_idx = [ np.argmin ( abs(pressure_truncated - pressure) ) for pressure in DFT_pressures  ] # finds the closest fine pressure datapoint to the individual scatter DFT pressure datapoint
-			if enthalpies:
+			if (enthalpies and not no_enthalpy_scatter):
 				scatter_enthalpy_normalised = [ (enthalpies[idx]-gibbs_energy_reference_truncated[i]) for idx,i in enumerate(DFT_pressures_nearest_idx) ]
 			################################################################################################################
 			# Tags
@@ -404,7 +406,8 @@ for filename in file_list:
 					trimhigh=float(tag.split("=")[-1])
 				if (trimlow or trimhigh):
 					normalised_energy_truncated,pressure_truncated = trim_data(normalised_energy_truncated,pressure_truncated,trimlow,trimhigh)
-					scatter_enthalpy_normalised,DFT_pressures = trim_data(scatter_enthalpy_normalised,DFT_pressures,trimlow,trimhigh)
+					if (enthalpies and not no_enthalpy_scatter):
+						scatter_enthalpy_normalised,DFT_pressures = trim_data(scatter_enthalpy_normalised,DFT_pressures,trimlow,trimhigh)
 				if '#shadelow' in tag:
 					low_shade_pressure=float(tag.split("=")[-1])
 					if tpa and (low_shade_pressure>500):
@@ -440,7 +443,7 @@ for filename in file_list:
 			# is called 'NRM', it will not have its data plotted 
 			if (structure_name != 'NRM'):
 				marker = marker_tray[ count%len(marker_tray) ]
-				if enthalpies:
+				if (enthalpies and not no_enthalpy_scatter):
 					ax.scatter(DFT_pressures,scatter_enthalpy_normalised,marker=marker,s=18,color=colour)
 				ax.plot(pressure_truncated,normalised_energy_truncated,linewidth=1.25,label=r'$\mathrm{%s}$' % (structure_name),color=colour,marker=marker,markevery=[])
 			closest_energy_idx = np.nanargmin([x for x in normalised_energy_truncated])
